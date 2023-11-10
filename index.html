@@ -1,0 +1,206 @@
+﻿<!DOCTYPE html>
+<html>
+  <head>
+    <style>
+      body {
+        background: linear-gradient(to right, #f2994a, #f2c94c);
+        font-family: Arial, sans-serif;
+        font-family: Arial, sans-serif;
+      }
+
+      h1 {
+        font-size: 8em;
+        text-align: center;
+        margin-top: 50px;
+        margin-bottom: 6px;
+      }
+
+      .gradient-text {
+        background: -webkit-linear-gradient(left, #098E42, #0aa04b);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+      }
+
+      p {
+        text-align: center;
+        color: #077537;
+        font-size: 1.2em;
+        margin-top: 6px;
+      }
+
+      input[type="file"] {
+        display: block;
+        margin: 50px auto;
+        font-size: 18px;
+        padding: 10px;
+        border: none;
+        border-radius: 5px;
+        background-color: #098E42;
+        color: #fff;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+      }
+
+      #fileInput.dragging {
+        transform: scale(1.3);
+        transition: transform 0.3s ease;
+      }
+
+      button {
+        display: block;
+        margin: 0 auto;
+        font-size: 18px;
+        padding: 10px 20px;
+        border: none;
+        border-radius: 5px;
+        background-color: #0aa04b;
+        color: #fff;
+        cursor: pointer;
+        transition: background-color 0.3s ease;
+      }
+
+      button:hover {
+        background-color: #077537;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>🧃<span class="gradient-text">suc</span></h1>
+    <p>(Settle Up Cleaner)</p>
+    <input id="fileInput" type="file" accept=".csv">
+    <button onclick="processFile()">Clean up!</button>
+
+    <script>
+      var fileInput = document.getElementById('fileInput');
+
+      fileInput.addEventListener('dragenter', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        fileInput.classList.add('dragging');
+      });
+
+      fileInput.addEventListener('dragleave', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        fileInput.classList.remove('dragging');
+      });
+
+      fileInput.addEventListener('dragover', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        e.dataTransfer.dropEffect = 'copy';
+      });
+
+      fileInput.addEventListener('drop', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        fileInput.classList.remove('dragging');
+        if (e.dataTransfer.files.length > 0) {
+          fileInput.files = e.dataTransfer.files;
+        }
+      });
+
+      function processFile() {
+        const file = document.getElementById('fileInput').files[0];
+        const reader = new FileReader();
+
+        reader.onload = function(event) {
+          const csvData = event.target.result;
+          const data = CSVToArray(csvData, ',');
+          const cleanedData = cleanDataForPayer(data, "Luis"); // Hardcoded payer
+          const csvContent = arrayToCSV(cleanedData, ',');
+          downloadCSV(csvContent);
+        };
+
+        reader.readAsText(file);
+      }
+
+      function CSVToArray(strData, strDelimiter) {
+        strDelimiter = (strDelimiter || ",");
+        var objPattern = new RegExp((
+          "(\\" + strDelimiter + "|\\r?\\n|\\r|^)" +
+          "(?:\"([^\"]*(?:\"\"[^\"]*)*)\"|" +
+          "([^\"\\" + strDelimiter + "\\r\\n]*))"), "gi");
+        var arrData = [[]];
+        var arrMatches = null;
+        while (arrMatches = objPattern.exec(strData)) {
+          var strMatchedDelimiter = arrMatches[1];
+          if (strMatchedDelimiter.length && strMatchedDelimiter !== strDelimiter) {
+            arrData.push([]);
+          }
+          if (arrMatches[2]) {
+            var strMatchedValue = arrMatches[2].replace(new RegExp("\"\"", "g"), "\"");
+          } else {
+            var strMatchedValue = arrMatches[3];
+          }
+          arrData[arrData.length - 1].push(strMatchedValue);
+        }
+        return (arrData);
+      }
+
+      function cleanDataForPayer(data, payer) {
+        /* 
+        CSV format:
+        0 ["Who paid", "Amount", "Currency", "For whom", "Split amounts", "Purpose", "Category", "Date & time", "Exchange rate", "Converted amount", "Type", "Receipt"]
+        1 ["Bob", "13.99", "EUR", "Bob;Alice", "6.995;6.995", "Beers", "", "2023-11-06 19:54:01", …]
+        3 ["Bob", "6.6", "EUR", "Bob;Alice", "3;1", "Drinks", "", "2023-11-05 13:54:53", …]
+        4 ["Alice", "1.8", "EUR", "Bob", "1.8", "Gum", "", "2023-11-04 14:35:16", …]
+        5 ["Bob", "40", "EUR", "Alice", "40", "Cash", "", "2023-11-01 18:22:10", …]
+        */
+        const forWhomIndex = data[0].indexOf('For whom');
+        const splitAmountsIndex = data[0].indexOf('Split amounts');
+        const purposeIndex = data[0].indexOf('Purpose');
+        const dateIndex = data[0].indexOf('Date & time');
+        let payerIndexInSplitAmount = null;
+        
+        const cleanedData = [];
+        // ["Date & time", "Amount", "Purpose"]
+        const cleanedHeader = [data[0][dateIndex], data[0][splitAmountsIndex], data[0][purposeIndex]];
+        cleanedData.push(cleanedHeader);
+
+        for (let i = data.length-1; i > 0; i--) {
+          const row = data[i];
+          if (!row[forWhomIndex].includes(payer)) {
+            continue;
+          }
+          if (payerIndexInSplitAmount === null) {
+            payerIndexInSplitAmount = row[forWhomIndex].split(';').indexOf(payer);
+          }
+          const amount = row[splitAmountsIndex].split(';')[payerIndexInSplitAmount];
+          cleanedData.push([row[dateIndex], amount, row[purposeIndex]]);
+        }
+
+        return cleanedData;
+      }
+
+      function arrayToCSV(data, strDelimiter) {
+        strDelimiter = strDelimiter || ',';
+        let csvContent = '';
+        data.forEach(function(row) {
+          let rowContent = '';
+          row.forEach(function(cell, index) {
+            if (index > 0) {
+              rowContent += strDelimiter;
+            }
+            if (cell !== null && cell !== undefined) {
+              rowContent += cell.toString().replace(/"/g, '""');
+            }
+          });
+          csvContent += rowContent + '\r\n';
+        });
+        return csvContent;
+      }
+
+      function downloadCSV(csvContent) {
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.setAttribute('href', url);
+        link.setAttribute('download', 'transformed.csv');
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
+    </script>
+  </body>
+</html>
