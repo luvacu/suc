@@ -159,7 +159,7 @@
 
         for (let i = data.length-1; i > 0; i--) {
           const row = data[i];
-          if (!row[forWhomIndex].includes(payer)) {
+          if (forWhomIndex >= row.length || !row[forWhomIndex].includes(payer)) {
             continue;
           }
           if (payerIndexInSplitAmount === null) {
