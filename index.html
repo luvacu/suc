@@ -107,7 +107,7 @@
           const csvData = event.target.result;
           const data = CSVToArray(csvData, ',');
           const cleanedData = cleanDataForPayer(data, "Luis"); // Hardcoded payer
-          const csvContent = arrayToCSV(cleanedData, ',');
+          const csvContent = arrayToCSV(cleanedData, ';');
           downloadCSV(csvContent);
         };
 
