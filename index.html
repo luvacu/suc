@@ -165,7 +165,11 @@
           if (payerIndexInSplitAmount === null) {
             payerIndexInSplitAmount = row[forWhomIndex].split(';').indexOf(payer);
           }
-          const amount = row[splitAmountsIndex].split(';')[payerIndexInSplitAmount];
+          let amount = row[splitAmountsIndex].split(';')[payerIndexInSplitAmount];
+          if (amount.includes('.')) {
+            // Use ',' as the decimal separator instead of '.'
+            amount = amount.replace('.', ',');
+          }
           cleanedData.push([row[dateIndex], amount, row[purposeIndex]]);
         }
 
