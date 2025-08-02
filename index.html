@@ -142,7 +142,7 @@
         CSV format:
         0 ["Who paid", "Amount", "Currency", "For whom", "Split amounts", "Purpose", "Category", "Date & time", "Exchange rate", "Converted amount", "Type", "Receipt"]
         1 ["Bob", "13.99", "EUR", "Bob;Alice", "6.995;6.995", "Beers", "", "2023-11-06 19:54:01", …]
-        3 ["Bob", "6.6", "EUR", "Bob;Alice", "3;1", "Drinks", "", "2023-11-05 13:54:53", …]
+        3 ["Bob", "6.6", "EUR", "Alice;Bob", "3;1", "Drinks", "", "2023-11-05 13:54:53", …]
         4 ["Alice", "1.8", "EUR", "Bob", "1.8", "Gum", "", "2023-11-04 14:35:16", …]
         5 ["Bob", "40", "EUR", "Alice", "40", "Cash", "", "2023-11-01 18:22:10", …]
         */
@@ -150,7 +150,6 @@
         const splitAmountsIndex = data[0].indexOf('Split amounts');
         const purposeIndex = data[0].indexOf('Purpose');
         const dateIndex = data[0].indexOf('Date & time');
-        let payerIndexInSplitAmount = null;
         
         const cleanedData = [];
         // ["Date & time", "Amount", "Purpose"]
@@ -162,9 +161,15 @@
           if (forWhomIndex >= row.length || !row[forWhomIndex].includes(payer)) {
             continue;
           }
-          if (payerIndexInSplitAmount === null) {
-            payerIndexInSplitAmount = row[forWhomIndex].split(';').indexOf(payer);
+          
+          // Find the payer's index in the "For whom" column for this specific row
+          const forWhomList = row[forWhomIndex].split(';');
+          const payerIndexInSplitAmount = forWhomList.indexOf(payer);
+          
+          if (payerIndexInSplitAmount === -1) {
+            continue; // Payer not found in this row
           }
+          
           let amount = row[splitAmountsIndex].split(';')[payerIndexInSplitAmount];
           if (amount.includes('.')) {
             // Use ',' as the decimal separator instead of '.'
